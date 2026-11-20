@@ -1,0 +1,45 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: solicitudes_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: solicitudes_backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      MONGO_URI: mongodb://mongo:27017/solicitudes_poza_rica
+      JWT_SECRET: poza_rica_tic_secret_key_2026_super_segura
+      JWT_REFRESH_SECRET: poza_rica_tic_refresh_key_2026_super_segura
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      - mongo
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: solicitudes_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:4000/api/v1
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  mongo_data:
