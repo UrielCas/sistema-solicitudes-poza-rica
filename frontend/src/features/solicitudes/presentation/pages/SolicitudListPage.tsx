@@ -1,136 +1,147 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { axiosClient } from '../../../../core/network/axiosClient';
+import { Plus } from 'lucide-react';
 import { AppLayout } from '../../../../shared/components/AppLayout';
-import { EstatusBadge } from '../components/EstatusBadge';
+import { Alert, Button, EstadoLista, Input, PageHeader, Paginacion, Select } from '../../../../shared/components/ui';
+import { ESTATUS_BANDEJA, etiquetaEstatus } from '../../../../core/constants/estatus';
+import { mensajeDeError } from '../../../../core/errors/AppFailure';
+import { formatearFecha } from '../../../../core/utils/formatters';
+import { useAreas } from '../../../catalogos/presentation/hooks/useCatalogos';
+import { BotonesExportar } from '../../../reportes/presentation/components/BotonesExportar';
+import { FiltrosSolicitudes } from '../../domain/entities/Solicitud';
+import { EstatusChip } from '../components/EstatusChip';
+import { SolicitudCard } from '../components/SolicitudCard';
+import { useSolicitudesPaginadas } from '../hooks/useSolicitudes';
 
+const anioActual = new Date().getFullYear();
+const ANIOS = Array.from({ length: Math.max(1, anioActual - 2026 + 2) }, (_, i) => String(2026 + i));
+
+/** Bandeja de seguimiento del Administrador (SolicitudListScreen). */
 export const SolicitudListPage = () => {
-  const [anio, setAnio] = useState('');
-  const [areaActual, setAreaActual] = useState('');
-  const [estatus, setEstatus] = useState('');
-  const [search, setSearch] = useState('');
+  const { areas } = useAreas();
+  const [filtros, setFiltros] = useState<FiltrosSolicitudes>({ page: 1 });
+  const [busqueda, setBusqueda] = useState('');
 
-  const { data: areas = [] } = useQuery({
-    queryKey: ['areas'],
-    queryFn: async () => (await axiosClient.get('/areas')).data.data,
-  });
+  // La búsqueda por texto espera a que se deje de escribir.
+  useEffect(() => {
+    const t = setTimeout(() => setFiltros((f) => ({ ...f, search: busqueda.trim() || undefined, page: 1 })), 400);
+    return () => clearTimeout(t);
+  }, [busqueda]);
 
-  const { data: solicitudes = [], isLoading } = useQuery({
-    queryKey: ['solicitudes', anio, areaActual, estatus, search],
-    queryFn: async () => {
-      const params: any = {};
-      if (anio) params.anio = anio;
-      if (areaActual) params.areaActual = areaActual;
-      if (estatus) params.estatus = estatus;
-      if (search) params.search = search;
-      const { data } = await axiosClient.get('/solicitudes', { params });
-      return data.data;
-    },
-  });
+  const { data, isLoading, isError, error, isFetching } = useSolicitudesPaginadas(filtros);
+  const filtrar = (k: keyof FiltrosSolicitudes, v: string) => setFiltros((f) => ({ ...f, [k]: v || undefined, page: 1 }));
+  const solicitudes = data?.items ?? [];
+  const { page: _p, ...filtrosExportar } = filtros;
 
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-[#292b34]">Registro y seguimiento</h1>
-            <p className="text-sm text-[#707784]">Consulta de expedientes registrados en el sistema</p>
-          </div>
-          <Link
-            to="/solicitudes/nueva"
-            className="px-4 py-2.5 bg-[#731936] hover:bg-[#4b1027] text-white text-sm font-semibold rounded-lg"
-          >
-            + Nueva Solicitud
-          </Link>
-        </div>
+        <PageHeader
+          titulo="Registro y seguimiento"
+          subtitulo={`Consulta de expedientes registrados en el sistema${data ? ` · ${data.meta.total} en total` : ''}`}
+          acciones={
+            <>
+              <BotonesExportar filtros={filtrosExportar} />
+              <Link
+                to="/solicitudes/nueva"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-guinda hover:bg-guinda-oscuro text-white text-sm font-semibold rounded-lg"
+              >
+                <Plus size={16} /> Nueva solicitud
+              </Link>
+            </>
+          }
+        />
 
-        <div className="bg-white p-4 rounded-xl border border-[#e3e5e9] grid grid-cols-1 md:grid-cols-5 gap-3">
-          <input
-            type="search"
-            placeholder="Folio, oficio o colonia..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-3 py-2 border border-[#cbd0d6] rounded-lg text-sm"
-          />
-          <select
-            value={areaActual}
-            onChange={(e) => setAreaActual(e.target.value)}
-            className="px-3 py-2 border border-[#cbd0d6] rounded-lg text-sm bg-white"
-          >
+        <div className="bg-white p-4 rounded-xl border border-borde grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          <Input type="search" placeholder="Folio, oficio, solicitante o colonia..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} aria-label="Buscar" />
+          <Select value={filtros.areaActual ?? ''} onChange={(e) => filtrar('areaActual', e.target.value)} aria-label="Dependencia">
             <option value="">Todas las dependencias</option>
-            {areas.map((a: any) => (
-              <option key={a._id} value={a._id}>{a.nombre}</option>
+            {areas.map((a) => (
+              <option key={a._id} value={a._id}>
+                {a.nombre}
+              </option>
             ))}
-          </select>
-          <select
-            value={anio}
-            onChange={(e) => setAnio(e.target.value)}
-            className="px-3 py-2 border border-[#cbd0d6] rounded-lg text-sm bg-white"
-          >
+          </Select>
+          <Select value={filtros.anio ?? ''} onChange={(e) => filtrar('anio', e.target.value)} aria-label="Año">
             <option value="">Todos los años</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-          </select>
-          <select
-            value={estatus}
-            onChange={(e) => setEstatus(e.target.value)}
-            className="px-3 py-2 border border-[#cbd0d6] rounded-lg text-sm bg-white"
-          >
+            {ANIOS.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </Select>
+          <Select value={filtros.estatus ?? ''} onChange={(e) => filtrar('estatus', e.target.value)} aria-label="Estatus">
             <option value="">Todos los estatus</option>
-            <option value="PENDIENTE">Pendiente</option>
-            <option value="TURNADA">Turnada</option>
-            <option value="EN_PROCESO">En proceso</option>
-            <option value="ATENDIDA">Atendida</option>
-            <option value="CERRADA">Cerrada</option>
-          </select>
-          <button
-            onClick={() => { setAnio(''); setAreaActual(''); setEstatus(''); setSearch(''); }}
-            className="px-3 py-2 text-sm border border-[#e3e5e9] hover:bg-slate-50 rounded-lg font-semibold cursor-pointer"
+            {[...ESTATUS_BANDEJA, 'TURNADA' as const].map((e) => (
+              <option key={e} value={e}>
+                {etiquetaEstatus(e)}
+              </option>
+            ))}
+          </Select>
+          <Button
+            variante="secundario"
+            onClick={() => {
+              setBusqueda('');
+              setFiltros({ page: 1 });
+            }}
           >
             Limpiar filtros
-          </button>
+          </Button>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#e3e5e9] overflow-x-auto shadow-sm">
+        {isError && <Alert tipo="error">{mensajeDeError(error)}</Alert>}
+
+        {/* Celular: tarjetas */}
+        <div className="md:hidden space-y-3">
           {isLoading ? (
-            <p className="p-6 text-sm text-[#707784]">Cargando expedientes...</p>
+            <EstadoLista>Cargando expedientes...</EstadoLista>
           ) : solicitudes.length === 0 ? (
-            <p className="p-8 text-center text-sm text-[#707784]">
-              No hay solicitudes registradas con estos filtros.
-            </p>
+            <EstadoLista>No hay solicitudes registradas con estos filtros.</EstadoLista>
+          ) : (
+            solicitudes.map((s) => <SolicitudCard key={s._id} solicitud={s} />)
+          )}
+        </div>
+
+        {/* Escritorio: tabla */}
+        <div className={`hidden md:block bg-white rounded-xl border border-borde overflow-x-auto shadow-sm ${isFetching && !isLoading ? 'opacity-70' : ''}`}>
+          {isLoading ? (
+            <EstadoLista>Cargando expedientes...</EstadoLista>
+          ) : solicitudes.length === 0 ? (
+            <EstadoLista>No hay solicitudes registradas con estos filtros.</EstadoLista>
           ) : (
             <table className="w-full text-left text-sm">
-              <thead className="bg-[#f8f9fa] border-b border-[#e3e5e9] text-[#707784] text-xs">
+              <thead className="bg-[#f8f9fa] border-b border-borde text-texto-suave text-xs">
                 <tr>
                   <th className="p-3">Folio</th>
+                  <th className="p-3">Recepción</th>
                   <th className="p-3">Oficio</th>
                   <th className="p-3">Dependencia</th>
                   <th className="p-3">Tipo / Solicitante</th>
                   <th className="p-3">Colonia</th>
-                  <th className="p-3">Año</th>
                   <th className="p-3">Estatus</th>
                   <th className="p-3">Acción</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e3e5e9]">
-                {solicitudes.map((s: any) => (
+              <tbody className="divide-y divide-borde">
+                {solicitudes.map((s) => (
                   <tr key={s._id} className="hover:bg-slate-50">
-                    <td className="p-3 font-mono font-bold text-[#731936]">{s.folio}</td>
-                    <td className="p-3 text-xs text-[#707784]">{s.folioOficialia || '—'}</td>
+                    <td className="p-3 font-mono font-bold text-guinda">{s.folio}</td>
+                    <td className="p-3 text-xs">{formatearFecha(s.fechaRecepcion)}</td>
+                    <td className="p-3 text-xs text-texto-suave">{s.folioOficialia || '—'}</td>
                     <td className="p-3 font-medium">{s.areaActual?.nombre || 'Sin asignar'}</td>
                     <td className="p-3">
-                      <div className="font-medium">{s.tipoSolicitud || s.asunto}</div>
-                      <div className="text-xs text-[#707784]">{s.solicitante}</div>
+                      <div className="font-medium">{s.tipoSolicitud}</div>
+                      <div className="text-xs text-texto-suave">{s.solicitante}</div>
                     </td>
-                    <td className="p-3">{s.domicilio?.colonia || s.colonia || '—'}</td>
-                    <td className="p-3">{s.anio}</td>
-                    <td className="p-3"><EstatusBadge estatus={s.estatus} /></td>
                     <td className="p-3">
-                      <Link
-                        to={`/solicitudes/${s._id}`}
-                        className="text-[#731936] hover:underline font-semibold"
-                      >
+                      {s.domicilio?.colonia || '—'}
+                      {s.zona && <div className="text-[11px] text-texto-suave">{s.zona}</div>}
+                    </td>
+                    <td className="p-3">
+                      <EstatusChip estatus={s.estatus} />
+                    </td>
+                    <td className="p-3">
+                      <Link to={`/solicitudes/${s._id}`} className="text-guinda hover:underline font-semibold">
                         Ver / Turnar
                       </Link>
                     </td>
@@ -140,6 +151,8 @@ export const SolicitudListPage = () => {
             </table>
           )}
         </div>
+
+        <Paginacion meta={data?.meta} onCambiar={(page) => setFiltros((f) => ({ ...f, page }))} />
       </div>
     </AppLayout>
   );

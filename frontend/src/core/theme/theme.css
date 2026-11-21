@@ -1,0 +1,35 @@
+/*
+ * Tema global: tipografías y colores institucionales como tokens de Tailwind.
+ * Uso: bg-guinda, text-guinda-oscuro, border-dorado, bg-crema, font-display…
+ * Los mismos valores existen en core/constants/colores.ts para usarlos desde JS.
+ */
+@theme {
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Montserrat", "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-guinda: #731936;
+  --color-guinda-oscuro: #4b1027;
+  --color-guinda-claro: #f2e7ed;
+  --color-dorado: #b8925a;
+  --color-crema: #f3e9df;
+  --color-texto: #292b34;
+  --color-texto-suave: #707784;
+  --color-borde: #e3e5e9;
+  --color-fondo: #f4f5f7;
+}
+
+/* Barra de desplazamiento fina en guinda */
+.scroll-guinda {
+  scrollbar-width: thin;
+  scrollbar-color: #731936 #f1e4e8;
+}
+.scroll-guinda::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-guinda::-webkit-scrollbar-track {
+  background: #f1e4e8;
+  border-radius: 999px;
+}
+.scroll-guinda::-webkit-scrollbar-thumb {
+  background: #731936;
+  border-radius: 999px;
+}

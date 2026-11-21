@@ -1,26 +1,49 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../core/utils/asyncHandler';
-import { registerSchema, loginSchema } from './auth.validation';
+import { ok, created } from '../../core/utils/serializers';
+import { registrarAuditoria } from '../../core/middleware/audit';
+import { registerSchema, loginSchema, credencialesSchema } from './auth.validation';
 import * as authService from './auth.service';
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const data = registerSchema.parse(req.body);
   const result = await authService.registerUser(data);
-  res.status(201).json({ success: true, data: result });
+  created(res, result);
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = loginSchema.parse(req.body);
-  const result = await authService.loginUser(email, password);
-  res.json({ success: true, data: result });
+  const cred = loginSchema.parse(req.body);
+  const identificador = 'areaId' in cred ? { areaId: cred.areaId } : { email: cred.email };
+  try {
+    const result = await authService.loginUser(cred);
+    registrarAuditoria({
+      accion: 'LOGIN_OK',
+      usuario: String(result.user.id),
+      rol: result.user.rol,
+      ip: req.ip,
+      detalle: identificador,
+    });
+    ok(res, result);
+  } catch (err) {
+    registrarAuditoria({ accion: 'LOGIN_FALLIDO', ip: req.ip, detalle: identificador });
+    throw err;
+  }
+});
+
+export const areasLogin = asyncHandler(async (_req: Request, res: Response) => {
+  ok(res, await authService.listAreasLogin());
+});
+
+export const updateCredenciales = asyncHandler(async (req: Request, res: Response) => {
+  const data = credencialesSchema.parse(req.body);
+  ok(res, await authService.updateCredenciales(req.user!.id, data));
 });
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
-  const tokens = await authService.refreshSession(refreshToken);
-  res.json({ success: true, data: tokens });
+  ok(res, await authService.refreshSession(refreshToken));
 });
 
 export const me = asyncHandler(async (req: Request, res: Response) => {
-  res.json({ success: true, data: req.user });
+  ok(res, req.user);
 });

@@ -1,80 +1,36 @@
-import { useState, FormEvent } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { axiosClient } from '../../../../core/network/axiosClient';
-import { useAuthStore } from '../store/useAuthStore';
+import { rutaInicio } from '../../domain/entities/User';
+import { PanelInstitucional, Flor } from '../components/PanelInstitucional';
+import { LoginForm } from '../components/LoginForm';
 
+/** Pantalla de acceso (LoginScreen): panel institucional + tarjeta de acceso. */
 export const LoginPage = () => {
-  const [email, setEmail] = useState('admin@pozarica.gob.mx');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const { data } = await axiosClient.post('/auth/login', { email, password });
-      setSession(data.data.user, data.data.accessToken, data.data.refreshToken);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al iniciar sesión');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const anterior = document.title;
+    document.title = 'Acceso — Presidencia Municipal de Poza Rica';
+    return () => {
+      document.title = anterior;
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 border border-slate-200">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">Sistema de Solicitudes</h1>
-          <p className="text-sm text-slate-500 mt-1">H. Ayuntamiento de Poza Rica</p>
-        </div>
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-[minmax(320px,26%)_1fr] font-sans text-texto">
+      <PanelInstitucional />
 
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+      <section className="relative overflow-hidden bg-crema flex items-center justify-center px-4 py-8 md:py-10">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#f8f1ea_0%,transparent_60%)]" />
+        <Flor className="w-[420px] -right-28 -bottom-28 opacity-[0.09]" />
+        <Flor className="w-[300px] -left-24 top-10 opacity-[0.07]" />
+        <Flor className="w-40 right-[12%] top-[8%] opacity-[0.08] hidden lg:block" />
+        <p className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap font-display font-extrabold text-[64px] lg:text-[84px] tracking-wider text-guinda/[0.06] select-none pointer-events-none hidden md:block">
+          POZA RICA, VERACRUZ
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Correo electrónico</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              placeholder="usuario@pozarica.gob.mx"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 bg-blue-700 hover:bg-blue-800 text-white font-medium rounded-lg transition disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? 'Ingresando...' : 'Iniciar Sesión'}
-          </button>
-        </form>
-      </div>
+        <LoginForm onIngreso={(s) => navigate(rutaInicio(s.user), { replace: true })} />
+      </section>
     </div>
   );
 };

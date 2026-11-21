@@ -8,6 +8,7 @@ export interface IUser extends Document {
   rol: 'SUPERADMIN' | 'DIRECTOR_AREA' | 'OPERADOR' | 'VENTANILLA';
   area?: Types.ObjectId;
   activo: boolean;
+  debeCambiarPassword: boolean;
   comparePassword(candidate: string): Promise<boolean>;
 }
 
@@ -23,6 +24,7 @@ const userSchema = new Schema<IUser>(
     },
     area: { type: Schema.Types.ObjectId, ref: 'Area' },
     activo: { type: Boolean, default: true },
+    debeCambiarPassword: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

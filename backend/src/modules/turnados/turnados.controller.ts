@@ -4,6 +4,7 @@ import * as turnadosService from './turnados.service';
 
 export const turnar = asyncHandler(async (req: Request, res: Response) => {
   const { solicitudId, areaDestino, instrucciones } = req.body;
+  res.locals.recursoId = String(solicitudId); // la auditoría queda ligada a la solicitud
   const result = await turnadosService.turnarSolicitud(
     solicitudId,
     areaDestino,

@@ -39,7 +39,43 @@ export interface ISolicitud extends Document {
   zona?: string;
   creadoPor: Types.ObjectId;
   coordenadas?: { lat: number; lng: number };
+  geo?: {
+    latitud: number;
+    longitud: number;
+    zona?: string;
+    validacionManual: boolean;
+    fuente?: 'MAPA' | 'GEOCODIFICACION';
+  };
+  evidencias: Types.DocumentArray<IEvidencia>;
 }
+
+/** Documento de soporte: archivo subido al servidor o enlace externo (Drive, etc.). */
+export interface IEvidencia {
+  _id: Types.ObjectId;
+  tipo: 'ARCHIVO' | 'ENLACE';
+  nombre: string;
+  descripcion?: string;
+  archivo?: string; // ruta relativa dentro de UPLOADS_DIR
+  mimetype?: string;
+  tamano?: number;
+  enlace?: string;
+  subidoPor: Types.ObjectId;
+  createdAt?: Date;
+}
+
+const evidenciaSchema = new Schema<IEvidencia>(
+  {
+    tipo: { type: String, enum: ['ARCHIVO', 'ENLACE'], required: true },
+    nombre: { type: String, required: true, trim: true },
+    descripcion: { type: String, trim: true },
+    archivo: { type: String },
+    mimetype: { type: String },
+    tamano: { type: Number },
+    enlace: { type: String, trim: true },
+    subidoPor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
 
 const solicitudSchema = new Schema<ISolicitud>(
   {
@@ -84,6 +120,14 @@ const solicitudSchema = new Schema<ISolicitud>(
       lat: { type: Number },
       lng: { type: Number },
     },
+    geo: {
+      latitud: { type: Number, min: -90, max: 90 },
+      longitud: { type: Number, min: -180, max: 180 },
+      zona: { type: String, trim: true },
+      validacionManual: { type: Boolean, default: false },
+      fuente: { type: String, enum: ['MAPA', 'GEOCODIFICACION'] },
+    },
+    evidencias: { type: [evidenciaSchema], default: [] },
   },
   { timestamps: true }
 );

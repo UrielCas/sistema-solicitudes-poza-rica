@@ -1,125 +1,95 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { axiosClient } from '../../../../core/network/axiosClient';
+import { Plus } from 'lucide-react';
 import { AppLayout } from '../../../../shared/components/AppLayout';
+import { Alert, Card, PageHeader, StatCard } from '../../../../shared/components/ui';
+import { POZA_RICA_CENTRO } from '../../../../core/constants/strings';
+import { mensajeDeError } from '../../../../core/errors/AppFailure';
+import { obtenerDashboardUseCase } from '../../../reportes/di';
+import { BotonesExportar } from '../../../reportes/presentation/components/BotonesExportar';
+import { useSolicitudesMapa } from '../../../solicitudes/presentation/hooks/useSolicitudes';
+import { coordenadaDe } from '../../../solicitudes/domain/entities/Solicitud';
+import { EstatusChip } from '../../../solicitudes/presentation/components/EstatusChip';
 
-const POZA_RICA_COORDS: [number, number] = [20.538, -97.457];
-
+/** Panel del Administrador (DashboardScreen): cifras, mapa consolidado y métricas por área. */
 export const DashboardPage = () => {
-  const { data: stats } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: async () => (await axiosClient.get('/reportes/dashboard')).data.data,
-  });
-
-  const { data: solicitudes = [] } = useQuery({
-    queryKey: ['solicitudes-mapa'],
-    queryFn: async () => (await axiosClient.get('/solicitudes')).data.data,
-  });
-
-  const handleDownloadExcel = async () => {
-    const response = await axiosClient.get('/reportes/excel', { responseType: 'blob' });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'solicitudes_poza_rica.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
-
-  const estatus = stats?.porEstatus || {};
+  const stats = useQuery({ queryKey: ['reportes', 'dashboard'], queryFn: () => obtenerDashboardUseCase.execute() });
+  const mapa = useSolicitudesMapa();
+  const r = stats.data?.resumen;
+  const conUbicacion = (mapa.data ?? []).map((s) => ({ s, c: coordenadaDe(s) })).filter((x) => x.c);
 
   return (
     <AppLayout>
       <div className="space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-[#292b34]">Mapa consolidado</h1>
-            <p className="text-sm text-[#707784]">Consulta institucional · histórico 2026 y operación 2027</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleDownloadExcel}
-              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold rounded-lg cursor-pointer"
-            >
-              Exportar Excel (.xlsx)
-            </button>
-            <Link
-              to="/solicitudes/nueva"
-              className="px-4 py-2 bg-[#731936] hover:bg-[#4b1027] text-white text-sm font-semibold rounded-lg"
-            >
-              + Nueva Solicitud
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          titulo="Mapa consolidado"
+          subtitulo="Consulta institucional · histórico 2026 y operación 2027"
+          acciones={
+            <>
+              <BotonesExportar />
+              <Link
+                to="/solicitudes/nueva"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-guinda hover:bg-guinda-oscuro text-white text-sm font-semibold rounded-lg"
+              >
+                <Plus size={16} /> Nueva solicitud
+              </Link>
+            </>
+          }
+        />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white p-4 rounded-xl border border-[#e3e5e9]">
-            <div className="text-xs text-[#707784]">Total registradas</div>
-            <strong className="block text-2xl mt-1">{stats?.total ?? 0}</strong>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-[#e3e5e9]">
-            <div className="text-xs text-[#707784]">Atendidas</div>
-            <strong className="block text-2xl mt-1 text-emerald-700">
-              {(estatus.ATENDIDA ?? 0) + (estatus.CERRADA ?? 0)}
-            </strong>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-[#e3e5e9]">
-            <div className="text-xs text-[#707784]">En proceso / Turnadas</div>
-            <strong className="block text-2xl mt-1 text-amber-600">
-              {(estatus.EN_PROCESO ?? 0) + (estatus.TURNADA ?? 0)}
-            </strong>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-[#e3e5e9]">
-            <div className="text-xs text-[#707784]">Pendientes</div>
-            <strong className="block text-2xl mt-1 text-[#731936]">
-              {(estatus.PENDIENTE ?? 0) + (estatus.RECIBIDA ?? 0)}
-            </strong>
-          </div>
+        {stats.isError && <Alert tipo="error">{mensajeDeError(stats.error)}</Alert>}
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <StatCard etiqueta="Total registradas" valor={stats.data?.total ?? 0} />
+          <StatCard etiqueta="Pendientes" valor={r?.pendientes ?? 0} color="text-guinda" />
+          <StatCard etiqueta="En proceso / Turnadas" valor={r?.enProceso ?? 0} color="text-amber-600" />
+          <StatCard etiqueta="Atendidas" valor={r?.atendidas ?? 0} color="text-emerald-700" />
+          <StatCard etiqueta="No procede" valor={r?.noProcede ?? 0} color="text-slate-600" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2 bg-white p-4 rounded-xl border border-[#e3e5e9]">
-            <h2 className="font-bold text-base mb-3">Visualizador territorial</h2>
-            <div className="h-[460px] rounded-lg overflow-hidden border border-[#e3e5e9]">
-              <MapContainer center={POZA_RICA_COORDS} zoom={13} className="h-full w-full">
-                <TileLayer
-                  attribution="&copy; OpenStreetMap"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {solicitudes
-                  .filter((s: any) => s.coordenadas?.lat && s.coordenadas?.lng)
-                  .map((s: any) => (
-                    <Marker key={s._id} position={[s.coordenadas.lat, s.coordenadas.lng]}>
-                      <Popup>
-                        <strong>{s.folio}</strong><br />
-                        {s.tipoSolicitud || s.asunto}<br />
-                        <span className="text-xs">{s.estatus}</span>
-                      </Popup>
-                    </Marker>
-                  ))}
+          <Card
+            className="lg:col-span-2 !p-4"
+            titulo="Visualizador territorial"
+            acciones={<span className="text-xs text-texto-suave">{conUbicacion.length} con ubicación</span>}
+          >
+            <div className="h-[460px] rounded-lg overflow-hidden border border-borde relative z-0">
+              <MapContainer center={POZA_RICA_CENTRO} zoom={13} className="h-full w-full">
+                <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {conUbicacion.map(({ s, c }) => (
+                  <Marker key={s._id} position={c!}>
+                    <Popup>
+                      <strong>{s.folio}</strong>
+                      <br />
+                      {s.tipoSolicitud}
+                      <br />
+                      <span className="inline-block my-1">
+                        <EstatusChip estatus={s.estatus} />
+                      </span>
+                      <br />
+                      <Link to={`/solicitudes/${s._id}`}>Ver expediente</Link>
+                    </Popup>
+                  </Marker>
+                ))}
               </MapContainer>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white p-4 rounded-xl border border-[#e3e5e9] space-y-3">
-            <h2 className="font-bold text-base">Solicitudes por dependencia</h2>
-            {!stats?.porArea?.length ? (
-              <p className="text-sm text-[#707784]">Sin registros todavía.</p>
+          <Card titulo="Solicitudes por dependencia" className="!p-4">
+            {!stats.data?.porArea?.length ? (
+              <p className="text-sm text-texto-suave">Sin registros todavía.</p>
             ) : (
               <ul className="space-y-2.5">
-                {stats.porArea.map((item: any) => (
-                  <li key={item._id} className="flex items-center justify-between text-sm border-b border-[#f0f0f2] pb-2">
+                {stats.data.porArea.map((item) => (
+                  <li key={item._id} className="flex items-center justify-between gap-3 text-sm border-b border-[#f0f0f2] pb-2">
                     <span className="font-medium">{item._id}</span>
-                    <span className="px-2.5 py-0.5 bg-[#f2e7ed] text-[#731936] font-bold rounded-full text-xs">
-                      {item.total}
-                    </span>
+                    <span className="px-2.5 py-0.5 bg-guinda-claro text-guinda font-bold rounded-full text-xs">{item.total}</span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </AppLayout>

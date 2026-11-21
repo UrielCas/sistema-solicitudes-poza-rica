@@ -21,6 +21,13 @@ services:
       JWT_SECRET: poza_rica_tic_secret_key_2026_super_segura
       JWT_REFRESH_SECRET: poza_rica_tic_refresh_key_2026_super_segura
       CORS_ORIGIN: http://localhost:5173
+      ADMIN_EMAIL: admin@pozarica.gob.mx
+      ADMIN_PASSWORD: Password123
+      INITIAL_AREA_PASSWORD: PozaRica2026
+      # En Windows los cambios del volumen montado no generan eventos de archivo:
+      # sin polling, "tsx watch" no recarga el backend al editar el código.
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
     depends_on:
       - mongo
     volumes:
