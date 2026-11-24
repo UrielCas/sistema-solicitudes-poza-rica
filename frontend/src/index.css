@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @import "./core/theme/theme.css";
 
+@keyframes girar-horario {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes girar-antihorario {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.flor-giro-normal {
+  animation: girar-horario 28s linear infinite;
+}
+
+.flor-giro-inverso {
+  animation: girar-antihorario 28s linear infinite;
+}
+
 body {
   background: var(--color-fondo);
   color: var(--color-texto);

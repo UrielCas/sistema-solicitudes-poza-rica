@@ -1,6 +1,6 @@
 import { TEXTOS } from '../../../../core/constants/strings';
 
-export const Flor = ({ className }: { className: string }) => (
+const Flor = ({ className }: { className: string }) => (
   <img
     src="/img/flor-institucional.png"
     alt=""

@@ -16,7 +16,7 @@ const MENU_ADMIN = [
   { to: '/cuenta', texto: 'Mi cuenta', Icono: KeyRound },
 ];
 
-/** Marco de las pantallas internas: encabezado guinda, menú del Administrador y aviso de contraseña inicial. */
+/** Marco de las pantallas internas: encabezado guinda, menú del Administrador y fondo de flores para áreas. */
 export const AppLayout = ({ children }: { children: ReactNode }) => {
   const user = useAuthStore((s) => s.user);
   const { pathname } = useLocation();
@@ -71,7 +71,7 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
       </header>
 
       {user?.debeCambiarPassword && pathname !== '/cuenta' && (
-        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-sm text-amber-900 flex flex-wrap items-center gap-2">
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-sm text-amber-900 flex flex-wrap items-center gap-2 relative z-10">
           Estás usando la contraseña inicial de tu cuenta. Por seguridad, cámbiala ahora.
           <Link to="/cuenta" className="font-semibold underline">
             Cambiar usuario / contraseña
@@ -98,8 +98,31 @@ export const AppLayout = ({ children }: { children: ReactNode }) => {
           <main className="p-4 md:p-7 min-w-0 max-w-[1600px] w-full mx-auto">{children}</main>
         </div>
       ) : (
-        // Áreas municipales: sin menú lateral, solo la captura de solicitudes.
-        <main className="flex-1 p-4 md:p-7 min-w-0 w-full">{children}</main>
+        // Áreas municipales: sin menú lateral, con fondo animado de flores institucionales girando.
+        <main className="relative flex-1 p-4 md:p-7 min-w-0 w-full overflow-hidden">
+          <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+            {/* Flor superior izquierda (520px, giro horario) */}
+            <img
+              src="/img/flor-institucional.png"
+              alt=""
+              className="flor-giro-normal fixed -left-[190px] -top-[140px] w-[520px] h-[520px] object-contain opacity-10 select-none"
+            />
+            {/* Flor inferior derecha (380px, giro antihorario) */}
+            <img
+              src="/img/flor-institucional.png"
+              alt=""
+              className="flor-giro-inverso fixed -right-[150px] -bottom-[170px] w-[380px] h-[380px] object-contain opacity-[0.08] select-none"
+            />
+            {/* Flor superior derecha (210px, giro horario) */}
+            <img
+              src="/img/flor-institucional.png"
+              alt=""
+              className="flor-giro-normal fixed -right-[70px] -top-[20px] w-[210px] h-[210px] object-contain opacity-[0.06] select-none"
+            />
+          </div>
+
+          <div className="relative z-10">{children}</div>
+        </main>
       )}
     </div>
   );
